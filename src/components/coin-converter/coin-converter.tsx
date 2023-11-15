@@ -59,7 +59,6 @@ export const CoinConverter = () => {
         } = await axios.get(
           `https://min-api.cryptocompare.com/data/price?fsym=${firstCurrency}&tsyms=${secondCurrency}`
         )
-        console.log(data)
         if (data) {
           const number = +data[secondCurrency].toFixed(3) * +e.target.value
           setSecondInputValue(String(number))
@@ -93,7 +92,6 @@ export const CoinConverter = () => {
         } = await axios.get(
           `https://min-api.cryptocompare.com/data/price?fsym=${secondCurrency}&tsyms=${firstCurrency}`
         )
-        console.log(data)
         if (data) {
           const number = +data[firstCurrency].toFixed(3) * +e.target.value
           setFirstInputValue(String(number))
@@ -206,6 +204,11 @@ export const CoinConverter = () => {
                   </>
                 ) : null}
               </div>
+              {firstInputValue && secondInputValue && (
+                <div>
+                  <p>{`${firstInputValue}  ${firstCurrency} = ${secondInputValue} ${secondCurrency}`}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
