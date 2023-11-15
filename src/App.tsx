@@ -1,7 +1,8 @@
-import './App.css';
+import { MainRoutes } from './routes'
+import './styles/global.scss'
 
-function App() {
-  return <div className="App">hello world</div>;
+const App = () => {
+  return <MainRoutes />
 }
 
-export default App;
+export default App

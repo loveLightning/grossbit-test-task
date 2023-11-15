@@ -1,0 +1,50 @@
+.wrap {
+  background-color: #161B30;
+  min-height: calc(100vh - 53px);
+}
+
+.title-wrap {
+  padding-top: 90px;
+  margin: 0 auto;
+  max-width: 656px;
+}
+
+.title {
+  width: 100%;
+  font-size: 56px;
+}
+
+.select {
+  background-color: #2A2F45;
+  outline: none;
+  color: white !important;
+}
+
+.label {
+  color: white !important;
+  font-size: 20px !important;
+}
+
+.main {
+  margin-top: 50px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 70px;
+}
+
+.wrap-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.input {
+  background-color: #2A2F45;
+  color: white !important;
+  padding: 12px;
+  border-radius: 4px;
+}
