@@ -45,6 +45,23 @@
 .input {
   background-color: #2A2F45;
   color: white !important;
-  padding: 12px;
+  padding: 15px;
   border-radius: 4px;
+}
+
+.img {
+  width: 30px;
+  height: 30px;
+}
+
+.div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media screen and (max-width: 576px) {
+  .wrap-field {
+    flex-direction: column;
+  }
 }
