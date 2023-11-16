@@ -6,48 +6,68 @@ import Select, { SelectChangeEvent } from '@mui/material/Select'
 import { Input } from '@mui/material'
 import CircularProgress from '@mui/material/CircularProgress'
 import Box from '@mui/material/Box'
-import { CoinConverterDataTypes, UnionCurrency } from './coin-converter.data'
 import s from './coin-converter.module.scss'
+import {
+  CoinConverterDataTypes,
+  CurrencyTypes,
+  UnionCurrency,
+  UnionOrderType,
+} from '../../types'
 
 export const CoinConverter = () => {
-  const [firstCoinConverterSelect, setFirstCoinConverterSelect] = useState<
-    CoinConverterDataTypes[]
-  >([])
-
-  const [secondCoinConverterSelect, setSecondCoinConverterSelect] = useState<
-    CoinConverterDataTypes[]
-  >([])
-
-  const [firstCurrency, setFirstCurrency] = useState<UnionCurrency>('BTC')
-  const [secondCurrency, setSecondCurrency] = useState<UnionCurrency>('ETH')
-
-  const [firstInputValue, setFirstInputValue] = useState('')
-  const [secondInputValue, setSecondInputValue] = useState('')
-
-  const [isLoadingFirst, setIsLoadingFirst] = useState(false)
-  const [isLoadingSecond, setIsLoadingSecond] = useState(false)
-
-  const changeFirstSelect = (event: SelectChangeEvent) => {
-    setFirstCurrency(event.target.value as UnionCurrency)
-  }
-
-  const changeSecondSelect = (event: SelectChangeEvent) => {
-    setSecondCurrency(event.target.value as UnionCurrency)
-  }
+  const [currency, setCurrency] = useState<CurrencyTypes>({
+    firstCurrency: {
+      coinConverterSelect: [],
+      currency: 'BTC',
+      inputValue: '',
+      isLoading: false,
+    },
+    secondCurrency: {
+      coinConverterSelect: [],
+      currency: 'ETH',
+      inputValue: '',
+      isLoading: false,
+    },
+  })
 
   const clearInputs = () => {
-    setFirstInputValue('')
-    setSecondInputValue('')
+    setCurrency((prev) => {
+      return {
+        firstCurrency: {
+          ...prev.firstCurrency,
+          inputValue: '',
+          isLoading: false,
+        },
+        secondCurrency: {
+          ...prev.secondCurrency,
+          inputValue: '',
+          isLoading: false,
+        },
+      }
+    })
   }
 
-  const changeValueFromFirstCurrency = async (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  const changeValueFromCurrency = async (
+    value: string,
+    orderCoin: UnionOrderType,
+    currencyTarget?: UnionCurrency
   ) => {
-    setFirstInputValue(e.target.value)
+    const currencyDefineTarget = currencyTarget || currency[orderCoin].currency
 
-    if (e.target.value.length >= 1) {
+    const swapCurrentOrderCoin: UnionOrderType =
+      orderCoin === 'firstCurrency' ? 'secondCurrency' : 'firstCurrency'
+
+    setCurrency((prev) => ({
+      ...prev,
+      [orderCoin]: {
+        ...prev[orderCoin],
+        inputValue: value,
+        isLoading: true,
+      },
+    }))
+
+    if (value.length >= 1) {
       try {
-        setIsLoadingFirst(true)
         const {
           data,
         }: {
@@ -55,80 +75,112 @@ export const CoinConverter = () => {
             [K in UnionCurrency]: number
           }
         } = await axios.get(
-          `https://min-api.cryptocompare.com/data/price?fsym=${firstCurrency}&tsyms=${secondCurrency}`
+          `https://min-api.cryptocompare.com/data/price?fsym=${currencyDefineTarget}&tsyms=${currency[swapCurrentOrderCoin].currency}`
         )
-        if (data) {
-          const number = +data[secondCurrency] * +e.target.value
 
-          setSecondInputValue(String(number))
+        if (data) {
+          const number = +data[currency[swapCurrentOrderCoin].currency] * +value
+
+          if (orderCoin === 'firstCurrency') {
+            setCurrency((prev) => {
+              return {
+                ...prev,
+                secondCurrency: {
+                  ...prev.secondCurrency,
+                  inputValue: String(number),
+                },
+              }
+            })
+          } else {
+            setCurrency((prev) => {
+              return {
+                ...prev,
+                firstCurrency: {
+                  ...prev.firstCurrency,
+                  inputValue: String(number),
+                },
+              }
+            })
+          }
         }
       } catch (error) {
         // eslint-disable-next-line no-console
         console.log(error)
       } finally {
-        setIsLoadingFirst(false)
+        setCurrency((prev) => ({
+          ...prev,
+          [orderCoin]: {
+            ...prev[orderCoin],
+            isLoading: false,
+          },
+        }))
       }
     } else {
       clearInputs()
     }
   }
 
-  const changeValueFromFSecondCurrency = async (
-    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  const changeSelect = async (
+    event: SelectChangeEvent,
+    orderCoin: UnionOrderType
   ) => {
-    setSecondInputValue(e.target.value)
-
-    if (e.target.value.length >= 1) {
-      try {
-        setIsLoadingSecond(true)
-        const {
-          data,
-        }: {
-          data: {
-            [K in UnionCurrency]: number
-          }
-        } = await axios.get(
-          `https://min-api.cryptocompare.com/data/price?fsym=${secondCurrency}&tsyms=${firstCurrency}`
-        )
-        if (data) {
-          const number = +data[firstCurrency] * +e.target.value
-          setFirstInputValue(String(number))
-        }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log(error)
-      } finally {
-        setIsLoadingSecond(false)
+    setCurrency((prev) => {
+      return {
+        ...prev,
+        [orderCoin]: {
+          ...prev[orderCoin],
+          currency: event.target.value,
+        },
       }
-    } else {
-      clearInputs()
-    }
+    })
+
+    changeValueFromCurrency(
+      currency[orderCoin].inputValue,
+      orderCoin,
+      event.target.value as UnionCurrency
+    )
   }
 
   const getAllCurrencies = async () => {
-    const { data } = await axios.get(
-      'https://min-api.cryptocompare.com/data/top/totalvolfull?limit=10&tsym=USD'
-    )
+    try {
+      const { data } = await axios.get(
+        'https://min-api.cryptocompare.com/data/top/totalvolfull?limit=10&tsym=USD'
+      )
 
-    const coins: CoinConverterDataTypes[] = data.Data.filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (coin: any, id: number) => {
-        if (id === 0 || id === 1 || id === 7) {
-          return true
+      const coins: CoinConverterDataTypes[] = data?.Data?.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (coin: any) => {
+          const name = coin.CoinInfo.Name
+          if (name === 'USDT' || name === 'BTC' || name === 'ETH') {
+            return true
+          }
+          return false
         }
-        return false
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ).map((coin: any) => {
-      const obj: CoinConverterDataTypes = {
-        name: coin.CoinInfo.FullName,
-        imageUrl: `https://www.cryptocompare.com/${coin.CoinInfo.ImageUrl}`,
-        symbol: coin.CoinInfo.Name,
-      }
-      return obj
-    })
-    setSecondCoinConverterSelect(coins)
-    setFirstCoinConverterSelect(coins)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ).map((coin: any) => {
+        const obj: CoinConverterDataTypes = {
+          name: coin.CoinInfo.FullName,
+          imageUrl: `https://www.cryptocompare.com/${coin.CoinInfo.ImageUrl}`,
+          symbol: coin.CoinInfo.Name,
+        }
+        return obj
+      })
+      setCurrency((prev) => {
+        return {
+          secondCurrency: {
+            ...prev.secondCurrency,
+            coinConverterSelect: coins,
+          },
+          firstCurrency: {
+            ...prev.firstCurrency,
+            coinConverterSelect: coins,
+          },
+        }
+      })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.log(error)
+    }
   }
 
   useEffect(() => {
@@ -144,9 +196,10 @@ export const CoinConverter = () => {
           <div className={s.main}>
             <div className={s.content}>
               <div className={s['wrap-field']}>
-                {firstCoinConverterSelect.length && firstCurrency ? (
+                {currency.firstCurrency.coinConverterSelect.length &&
+                currency.firstCurrency.currency ? (
                   <>
-                    {isLoadingSecond && (
+                    {currency.secondCurrency.isLoading && (
                       <Box
                         sx={{
                           position: 'absolute',
@@ -159,8 +212,10 @@ export const CoinConverter = () => {
                     )}
                     <Input
                       fullWidth
-                      onChange={(e) => changeValueFromFirstCurrency(e)}
-                      value={firstInputValue}
+                      onChange={(e) =>
+                        changeValueFromCurrency(e.target.value, 'firstCurrency')
+                      }
+                      value={currency.firstCurrency.inputValue}
                       placeholder="Enter the value"
                       type="number"
                       className={s.input}
@@ -174,21 +229,24 @@ export const CoinConverter = () => {
                         }}
                         className={s.select}
                         labelId="first-currency"
-                        value={firstCurrency}
-                        onChange={changeFirstSelect}
+                        value={currency.firstCurrency.currency}
+                        onChange={(e) => changeSelect(e, 'firstCurrency')}
                       >
-                        {firstCoinConverterSelect.map((el) => (
-                          <MenuItem key={el.symbol} value={el.symbol}>
-                            <div className={s.div}>
-                              {el.name}
-                              <img
-                                className={s.img}
-                                src={el.imageUrl}
-                                alt="Coin icon"
-                              />
-                            </div>
-                          </MenuItem>
-                        ))}
+                        currency
+                        {currency.firstCurrency.coinConverterSelect.map(
+                          (el) => (
+                            <MenuItem key={el.symbol} value={el.symbol}>
+                              <div className={s.div}>
+                                {el.name}
+                                <img
+                                  className={s.img}
+                                  src={el.imageUrl}
+                                  alt="Coin icon"
+                                />
+                              </div>
+                            </MenuItem>
+                          )
+                        )}
                       </Select>
                     </FormControl>
                   </>
@@ -196,9 +254,10 @@ export const CoinConverter = () => {
               </div>
 
               <div className={s['wrap-field']}>
-                {secondCoinConverterSelect.length && secondCurrency ? (
+                {currency.secondCurrency.coinConverterSelect.length &&
+                currency.secondCurrency.currency ? (
                   <>
-                    {isLoadingFirst && (
+                    {currency.firstCurrency.isLoading && (
                       <Box
                         sx={{
                           position: 'absolute',
@@ -211,8 +270,13 @@ export const CoinConverter = () => {
                     )}
                     <Input
                       fullWidth
-                      onChange={(e) => changeValueFromFSecondCurrency(e)}
-                      value={secondInputValue}
+                      onChange={(e) =>
+                        changeValueFromCurrency(
+                          e.target.value,
+                          'secondCurrency'
+                        )
+                      }
+                      value={currency.secondCurrency.inputValue}
                       placeholder="Enter the value"
                       type="number"
                       className={s.input}
@@ -226,31 +290,34 @@ export const CoinConverter = () => {
                         }}
                         className={s.select}
                         labelId="second-currency"
-                        value={secondCurrency}
-                        onChange={changeSecondSelect}
+                        value={currency.secondCurrency.currency}
+                        onChange={(e) => changeSelect(e, 'secondCurrency')}
                       >
-                        {secondCoinConverterSelect.map((el) => (
-                          <MenuItem key={el.symbol} value={el.symbol}>
-                            <div className={s.div}>
-                              {el.name}
-                              <img
-                                className={s.img}
-                                src={el.imageUrl}
-                                alt="Coin icon"
-                              />
-                            </div>
-                          </MenuItem>
-                        ))}
+                        {currency.secondCurrency.coinConverterSelect.map(
+                          (el) => (
+                            <MenuItem key={el.symbol} value={el.symbol}>
+                              <div className={s.div}>
+                                {el.name}
+                                <img
+                                  className={s.img}
+                                  src={el.imageUrl}
+                                  alt="Coin icon"
+                                />
+                              </div>
+                            </MenuItem>
+                          )
+                        )}
                       </Select>
                     </FormControl>
                   </>
                 ) : null}
               </div>
-              {firstInputValue && secondInputValue && (
-                <div>
-                  <p>{`${firstInputValue}  ${firstCurrency} = ${secondInputValue} ${secondCurrency}`}</p>
-                </div>
-              )}
+              {currency.firstCurrency.inputValue &&
+                currency.secondCurrency.inputValue && (
+                  <div>
+                    <p>{`${currency.firstCurrency.inputValue}  ${currency.firstCurrency.currency} = ${currency.secondCurrency.inputValue} ${currency.secondCurrency.currency}`}</p>
+                  </div>
+                )}
             </div>
           </div>
         </div>
